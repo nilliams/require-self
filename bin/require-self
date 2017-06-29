@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 
-var fs = require('fs');
 var path = require('path');
+var createPseudoModule = require('../');
 
 // Get the name of the module in the current working directory.
 var cwd = process.cwd();
 var pkg = require(path.join(cwd, 'package.json'));
 var name = pkg.name;
 
-// Compute the location and content for the pseudo-module.
-var modulePath = path.join(cwd, 'node_modules', name + '.js');
-var moduleText = "module.exports = require('" + cwd.replace(/\\/g, '\\\\') + "');";
+// Create the 'main' pseudo-module
+createPseudoModule(cwd, name, pkg.main || 'index.js');
 
-// Create the pseudo-module.
-try {
-  fs.mkdirSync(path.dirname(modulePath));
-} catch (e) {
-  if (e.code !== 'EEXIST') {
-    throw e;
-  }
+// Support alternative package entry points if passed as arguments. e.g.
+//
+//   require-self 'lodash/array' 'lodash/fp/object'
+//
+if (process.argv.length > 2) {
+  var entryPoints = process.argv.slice(2);
+
+  entryPoints.forEach(function(entryPoint) {
+    createPseudoModule(cwd, name, entryPoint);
+  });
 }
-fs.writeFileSync(modulePath, moduleText);
